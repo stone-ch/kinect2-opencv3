@@ -17,6 +17,7 @@ changeBG::changeBG() :
 	pMultiSourceFrameReader(NULL),
 	pDepthCoordinates(NULL)
 {
+	frameWriter.open("frame.avi", CV_FOURCC('M', 'J', 'P', 'G'), 15.0, Size(1920, 1080));
 	backgroundImage = imread("E:/data/clothes/19201080.jpg");
 	colorImage.create(cHeight, cWidth, CV_8UC4);
 	resultImage.create(cHeight, cWidth, CV_8UC3);
@@ -124,6 +125,22 @@ void changeBG::Update()
 	IBodyIndexFrame* pBodyIndexFrame = NULL;
 
 	hr = pMultiSourceFrameReader->AcquireLatestFrame(&pMultiSourceFrame);
+
+	while (FAILED(hr))
+	{
+		SafeRelease(pMultiSourceFrame);
+		SafeRelease(pMultiSourceFrameReader);
+		hr = pMyKinect->OpenMultiSourceFrameReader(FrameSourceTypes::FrameSourceTypes_Depth |
+			FrameSourceTypes::FrameSourceTypes_Color | FrameSourceTypes::FrameSourceTypes_BodyIndex,
+			&pMultiSourceFrameReader);
+		Sleep(60);
+		if (SUCCEEDED(hr))
+		{
+			hr = pMultiSourceFrameReader->AcquireLatestFrame(&pMultiSourceFrame);
+		}
+		
+		cout << "MultiSourceFrame" << rand() % 100 << endl;
+	}
 
 	if (SUCCEEDED(hr))
 	{
@@ -330,13 +347,14 @@ void changeBG::ProcessFrame
 					}
 				}
 				cend = clock();
-				if ((cend - cstart) > 50)
+				/*if ((cend - cstart) > 50)
 				{
 					break;
-				}
+				}*/
 			}
 		}
 		
 		imshow("color", resultImage);
+		frameWriter << resultImage;
 	}
 }

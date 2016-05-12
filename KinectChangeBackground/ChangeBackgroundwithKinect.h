@@ -22,6 +22,7 @@ private:
 	Mat							colorImage;
 	RGBQUAD*					pColorBuffer;
 	clock_t						cstart, cend;
+	VideoWriter frameWriter;
 
 	void initKinect();	
 	void Update();
@@ -32,5 +33,6 @@ private:
 		const RGBQUAD* pColorBuffer, int colorHeight, int colorWidth,
 		const BYTE* pBodyIndexBuffer, int bodyIndexHeight, int bodyIndexWidth
 		);
+	void changeBG::saveVideo(Mat* frame);
 };
 
