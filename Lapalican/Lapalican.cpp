@@ -7,12 +7,12 @@ private:
 
 	vector<Mat_<Vec3f> > leftLapPyr, rightLapPyr, resultLapPyr;
 	Mat leftHighestLevel, rightHighestLevel, resultHighestLevel;
-	vector<Mat_<Vec3f> > gaussianPyramid; 
+	vector<Mat_<Vec3f> > gaussianPyramid;
 
 	Mat rightGray, rightMask, right8U;
 	vector<Mat> rightMaskPyramid;
 
-	int levels;
+	int levels; 
 
 	void buildPyramids() {
 		buildLaplacianPyramid(left, leftLapPyr, leftHighestLevel);
@@ -33,7 +33,7 @@ private:
 
 		gaussianPyramid.clear();
 		Mat currentImg;
-		
+
 		currentImg = left.clone();
 		int range_x = currentImg.rows * 0.2;
 		int range_y = currentImg.cols * 0.2;
@@ -48,8 +48,8 @@ private:
 			if (leftLapPyr.size() > l)
 				pyrDown(currentImg, _down, leftLapPyr[l].size());
 			else
-				pyrDown(currentImg, _down, leftHighestLevel.size()); 
-			
+				pyrDown(currentImg, _down, leftHighestLevel.size());
+
 			gaussianPyramid.push_back(_down);
 			currentImg = _down;
 		}
@@ -81,7 +81,7 @@ private:
 			pyrDown(currentImg, down);
 			pyrUp(down, up, currentImg.size());
 			Mat lap = currentImg - up;
-			
+
 			lapPyr.push_back(lap);
 			currentImg = down;
 		}
@@ -90,13 +90,13 @@ private:
 
 	Mat_<Vec3f> reconstructImgFromLapPyramid() {
 		Mat currentImg = leftHighestLevel;
-		
+
 		for (int l = levels - 1; l >= 0; l--) {
 			Mat up;
 
 			pyrUp(currentImg, up, resultLapPyr[l].size());
 			currentImg = up + resultLapPyr[l];
-			
+
 		}
 		return currentImg;
 	}
@@ -123,11 +123,11 @@ public:
 		left(_left), right(_right), levels(_levels)
 	{
 		getRightMask();
-		buildPyramids();  
-		blendLapPyrs();   
+		buildPyramids();
+		blendLapPyrs();
 	};
 
-	
+
 
 	Mat_<Vec3f> blend() {
 		return reconstructImgFromLapPyramid();
@@ -135,7 +135,7 @@ public:
 };
 
 Mat_<Vec3f> LaplacianBlend(const Mat_<Vec3f>& l, const Mat_<Vec3f>& r) {
-	LaplacianBlending lb(l, r, 4);
+	LaplacianBlending lb(l, r, 1); //改变levels可以使融合后的白边变窄，锯齿变明显
 	return lb.blend();
 }
 
