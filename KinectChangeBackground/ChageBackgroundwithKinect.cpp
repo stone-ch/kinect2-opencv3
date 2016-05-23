@@ -1,11 +1,12 @@
 #include "stdafx.h"
 #include "ChangeBackgroundwithKinect.h"
+#include "LapalicanClass.h"
 
 int _tmain(int argc, _TCHAR* argv[])
 {
 	
 	changeBG CBG;
-	
+	CBG.SetChartlet("E:/data/clothes/fangaos128x128.jpg");
 	CBG.Run();
 	
 	return 0;
@@ -18,7 +19,8 @@ changeBG::changeBG() :
 	pDepthCoordinates(NULL)
 {
 	frameWriter.open("frame.avi", CV_FOURCC('M', 'J', 'P', 'G'), 15.0, Size(1920, 1080));
-	backgroundImage = imread("E:/data/clothes/19201080.jpg");
+	bg = imread("E:/data/clothes/19201080.jpg");
+	backgroundImage = Mat::ones(Size(1920, 1080), CV_8UC3);
 	colorImage.create(cHeight, cWidth, CV_8UC4);
 	resultImage.create(cHeight, cWidth, CV_8UC3);
 	hr = S_FALSE;
@@ -45,11 +47,23 @@ void changeBG::Run()
 	while (true)
 	{
 		Update();
+		//cout << resultImage.cols << resultImage.rows << endl;
+		//resize(resultImage, resultImage, Size(1920, 1080));
+		//pyrUp(resultImage, resultImage);
+		imshow("resultImage", resultImage);
+
 		if (waitKey(10) == 27)
 		{
 			break;
 		}
 	}
+}
+
+void changeBG::SetChartlet(string path)
+{
+	Mat charlet8u = imread(path);
+	charlet8u.convertTo(chartlet, CV_32F, 1.0 / 255.0);
+	assert(!chartlet.empty());
 }
 
 void changeBG::initKinect()
@@ -123,6 +137,7 @@ void changeBG::Update()
 	IDepthFrame* pDepthFrame = NULL;
 	IColorFrame* pColorFrame = NULL;
 	IBodyIndexFrame* pBodyIndexFrame = NULL;
+	IBodyFrame* pBodyFrame = NULL;
 
 	hr = pMultiSourceFrameReader->AcquireLatestFrame(&pMultiSourceFrame);
 
@@ -131,7 +146,7 @@ void changeBG::Update()
 		SafeRelease(pMultiSourceFrame);
 		SafeRelease(pMultiSourceFrameReader);
 		hr = pMyKinect->OpenMultiSourceFrameReader(FrameSourceTypes::FrameSourceTypes_Depth |
-			FrameSourceTypes::FrameSourceTypes_Color | FrameSourceTypes::FrameSourceTypes_BodyIndex,
+			FrameSourceTypes::FrameSourceTypes_Color | FrameSourceTypes::FrameSourceTypes_BodyIndex | FrameSourceTypes::FrameSourceTypes_Body,
 			&pMultiSourceFrameReader);
 		Sleep(60);
 		if (SUCCEEDED(hr))
@@ -152,7 +167,6 @@ void changeBG::Update()
 			hr = pDepthFrameReference->AcquireFrame(&pDepthFrame);
 		}
 		SafeRelease(pDepthFrameReference);
-		cstart = clock();
 	}
 	else
 	{
@@ -182,6 +196,19 @@ void changeBG::Update()
 			hr = pBodyIndexFrameReference->AcquireFrame(&pBodyIndexFrame);
 		}
 		SafeRelease(pBodyIndexFrameReference);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		IBodyFrameReference* pBodyFrameReference = NULL;
+
+		hr = pMultiSourceFrame->get_BodyFrameReference(&pBodyFrameReference);
+
+		if (SUCCEEDED(hr))
+		{
+			hr = pBodyFrameReference->AcquireFrame(&pBodyFrame);
+		}
+		SafeRelease(pBodyFrameReference);
 	}
 
 	if (SUCCEEDED(hr))
@@ -287,16 +314,52 @@ void changeBG::Update()
 
 		if (SUCCEEDED(hr))
 		{
-			
+			cstart = clock();
+			z = Mat::zeros(1080, 1920, CV_8UC3);
 			ProcessFrame(depthTime, pDepthBuffer, depthHeight, depthWidth,
 				pColorBuffer, colorHeight, colorWidth,
 				pBodyIndexBuffer, bodyIndexHeight, bodyIndexWidth);
-			//cend = clock();
+			cend = clock();
 			cout << "process time: " << cend - cstart << endl;
 		}
 		SafeRelease(pBodyIndexFrameDescription);
+
+		//get body frame data and show the chartlet
+		if (SUCCEEDED(hr))
+		{
+			IBody *body[BODY_COUNT] = { 0 };
+			hr = pBodyFrame->GetAndRefreshBodyData(BODY_COUNT, body);
+			for (int i = 0; i < BODY_COUNT; i++)
+			{
+				BOOLEAN tracked = false;
+				hr = body[i]->get_IsTracked(&tracked);
+				if (tracked)
+				{
+					Joint joint[JointType_Count];
+					hr = body[i]->GetJoints(JointType_Count, joint);
+					ColorSpacePoint csp1;
+					pCoordinateMapper->MapCameraPointToColorSpace(joint[JointType_Head].Position, &csp1);
+
+					int chartlet_x = (int)csp1.X - 200 - (chartlet.cols / 2);
+					int chartlet_y = (int)csp1.Y -(chartlet.rows / 2);
+					if (chartlet_x > 300 && chartlet_x < resultImage.cols - 200 && chartlet_y > 200 && chartlet_y < resultImage.rows - 200)
+					{
+						Mat_<Vec3f> chartletROI = resultImage(Range(chartlet_y, chartlet_y + chartlet.cols), Range(chartlet_x, chartlet_x + chartlet.rows));
+						//Mat chartletROI = resultImage(Range(0, 100), Range(0, 100));
+						chartlet.copyTo(chartletROI);
+						//imshow("Debug_ROI", resultImage);
+					}
+				}
+			}
+			for (int i = 0; i < BODY_COUNT; i++)
+			{
+				SafeRelease(body[i]);
+			}
+			SafeRelease(*body);
+		}
 	}
 
+	SafeRelease(pBodyFrame);
 	SafeRelease(pDepthFrame);
 	SafeRelease(pColorFrame);
 	SafeRelease(pBodyIndexFrame);
@@ -317,15 +380,27 @@ void changeBG::ProcessFrame
 		pColorBuffer && (colorWidth == cWidth) && (colorHeight == cHeight) &&
 		pBodyIndexBuffer && (bodyIndexWidth == dWidth) && (bodyIndexHeight == dHeight))
 	{
+		cstart = clock();
 		hr = pCoordinateMapper->MapColorFrameToDepthSpace(depthHeight * depthWidth, (UINT16*)pDepthBuffer, colorHeight * colorWidth, pDepthCoordinates);
-		resultImage = backgroundImage.clone();
-		Mat colorImage3;
+		cend = clock();
+		cout << "Coordinate Mapping time" << cend - cstart << endl;
+		Mat colorImage3, bgc;
+		cstart = clock();
+		bgc = bg.clone();
+		cend = clock();
+		cout << "clone img time" << cend - cstart << endl;
+
+		cstart = clock();
 		cvtColor(colorImage, colorImage3, COLOR_BGRA2BGR);
+		cend = clock();
+		cout << "cvtColor time" << cend - cstart << endl;
+
+		cstart = clock();
 		if (SUCCEEDED(hr))
 		{
-			for (size_t i = 0; i < colorHeight; i++)
+			for (int i = 0; i < colorHeight; i++)
 			{
-				for (size_t j = 0; j < colorWidth; j++)
+				for (int j = 0; j < colorWidth; j++)
 				{
 					int colorIndex = i * colorWidth + j;
 					DepthSpacePoint p = pDepthCoordinates[colorIndex];
@@ -340,21 +415,31 @@ void changeBG::ProcessFrame
 						
 						if (player != 0xff)
 						{
-							resultImage.at<Vec3b>(i, j) = colorImage3.at<Vec3b>(i, j);
-							//resultImage.at<Vec3b>(i, j) = Vec3b(0, 0, 255);
-						}
-						
+							//resultImage.at<Vec3b>(i, j) = colorImage3.at<Vec3b>(i, j);
+							z.at<Vec3b>(i, j) = Vec3b(255, 255, 255);
+						}						
 					}
 				}
-				cend = clock();
-				/*if ((cend - cstart) > 50)
-				{
-					break;
-				}*/
 			}
+			cend = clock();
+			cout << "make mask time" << cend - cstart << endl;
+
+			/*resize(bgc, bgc, Size(bgc.cols / 2, bgc.rows / 2));
+			resize(colorImage3, colorImage3, Size(colorImage3.cols / 2, colorImage3.rows / 2));
+			resize(z, z, Size(z.cols / 2, z.rows / 2));*/
+
+			cstart = clock();
+			LapalicanClass lap;	
+			lap.setBGImage(bgc);
+			lap.setFGImage(colorImage3);
+			lap.setMaskImage(z);
+			resultImage = lap.Run();
+			cend = clock();
+			cout << "Lapalican time" << cend - cstart << endl;
+			//imshow("Debug-resultImage", resultImage);
 		}
-		
-		imshow("color", resultImage);
-		frameWriter << resultImage;
+
+		//Save video to "./frame.avi"
+		//frameWriter << bgc;
 	}
 }

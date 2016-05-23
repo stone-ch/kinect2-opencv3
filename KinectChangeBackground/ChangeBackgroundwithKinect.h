@@ -5,6 +5,7 @@ class changeBG
 public:
 	changeBG();
 	~changeBG();
+	void SetChartlet(string path);
 	void Run();
 
 private:
@@ -17,12 +18,16 @@ private:
 	ICoordinateMapper*			pCoordinateMapper;
 	HRESULT						hr;
 	DepthSpacePoint*			pDepthCoordinates;
+	Mat							bg;
+	Mat							mask;
 	Mat							backgroundImage;
 	Mat							resultImage;
 	Mat							colorImage;
+	Mat							z;
 	RGBQUAD*					pColorBuffer;
 	clock_t						cstart, cend;
-	VideoWriter frameWriter;
+	VideoWriter					frameWriter;
+	Mat_<Vec3f>					chartlet;
 
 	void initKinect();	
 	void Update();
