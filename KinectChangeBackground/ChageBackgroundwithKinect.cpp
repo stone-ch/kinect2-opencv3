@@ -52,6 +52,10 @@ void changeBG::Run()
 		//pyrUp(resultImage, resultImage);
 		imshow("resultImage", resultImage);
 
+		// save video to frame.avi
+		//resultImage.convertTo(resultImage, CV_8UC3, 255);
+		//frameWriter << resultImage;
+
 		if (waitKey(10) == 27)
 		{
 			break;
@@ -438,8 +442,5 @@ void changeBG::ProcessFrame
 			cout << "Lapalican time" << cend - cstart << endl;
 			//imshow("Debug-resultImage", resultImage);
 		}
-
-		//Save video to "./frame.avi"
-		//frameWriter << bgc;
 	}
 }

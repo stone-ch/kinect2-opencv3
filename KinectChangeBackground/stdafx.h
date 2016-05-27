@@ -13,6 +13,7 @@
 #include <time.h>
 #include <Kinect.h>
 #include <opencv.hpp>
+//#include <opencv2\cudawarping.hpp>
 
 using namespace std;
 using namespace cv;
