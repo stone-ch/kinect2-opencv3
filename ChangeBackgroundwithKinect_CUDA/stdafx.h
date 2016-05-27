@@ -14,6 +14,7 @@
 #include <Kinect.h>
 #include <opencv.hpp>
 #include <opencv2\cudawarping.hpp>
+#include <opencv2\cudaarithm.hpp>
 
 using namespace std;
 using namespace cv;

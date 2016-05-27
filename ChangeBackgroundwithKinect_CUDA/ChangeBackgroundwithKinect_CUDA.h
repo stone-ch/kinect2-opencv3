@@ -24,18 +24,17 @@ private:
 	Mat							resultImage;
 	Mat							colorImage;
 	Mat							z;
-	
+
 	RGBQUAD*					pColorBuffer;
 	clock_t						cstart, cend;
+	clock_t						total_cstart, total_cend;
 	VideoWriter					frameWriter;
 	Mat_<Vec3f>					chartlet;
-	double						t;
-	double						fps;
 
-	void initKinect();	
+	void initKinect();
 	void Update();
 	void ProcessFrame
-	(
+		(
 		INT64 time,
 		const UINT16* pDepthBuffer, int depthHeight, int depthwidth,
 		const RGBQUAD* pColorBuffer, int colorHeight, int colorWidth,

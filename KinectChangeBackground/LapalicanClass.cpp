@@ -9,7 +9,8 @@ void LapalicanClass::buildLaplacianPyramid(const Mat_<Vec3f>& img, vector<Mat_<V
 {
 	lapPyr.clear();
 	Mat currentImg = img;
-	for (int l = 0; l<levels; l++) {
+	for (int l = 0; l<levels; l++)
+	{
 		Mat down, up;
 		pyrDown(currentImg, down);
 		pyrUp(down, up, currentImg.size());
@@ -78,22 +79,15 @@ Mat LapalicanClass::reconstructImg()
 
 Mat LapalicanClass::Run()
 {
-	
-	buildLaplacianPyramid(backgroundImg, bgLapPyr);
-	
-	buildLaplacianPyramid(foregroundImg, fgLapPyr);
-	
-	buildGaussianPyramid(foregroundImg, fgGauPyramid);
-	
+	buildLaplacianPyramid(backgroundImg, bgLapPyr);	
+	buildLaplacianPyramid(foregroundImg, fgLapPyr);	
+
+	buildGaussianPyramid(foregroundImg, fgGauPyramid);	
 	buildGaussianPyramid(fgMask, maskGauPyramid);
-	
 	buildGaussianPyramid(backgroundImg, bgGauPyramid);
-	
-	
+
 	blendInEachLevel();
-	
-	return reconstructImg();
-		
+	return reconstructImg();		
 }
 
 void LapalicanClass::setBGImage(Mat img)
@@ -121,7 +115,7 @@ void LapalicanClass::setFGImage(Mat img)
 void LapalicanClass::setMaskImage(Mat img)
 {
 	fgMask = NULL;
-	img.convertTo(fgMask, CV_32F, 1.0 / 255.0);
+	fgMask = img;
 	if (fgMask.empty())
 	{
 		cout << "ERROR: Cannot Load fgMask Image!" << endl;

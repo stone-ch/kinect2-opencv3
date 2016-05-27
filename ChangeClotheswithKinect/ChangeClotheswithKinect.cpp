@@ -1,7 +1,5 @@
 #include "stdafx.h"
 
-using namespace std;
-
 template<class Interface>
 inline void SafeRelease(Interface *& pInterfaceToRelease)
 {
@@ -101,10 +99,10 @@ int LoadClothes(cv::Mat *image, cv::Mat *imageMask, ClothesType clothesType)
 	switch (clothesType)
 	{
 	case ClothesType_Hat:
-		path = "hat1s.jpg";
+		//path = "hat1s.jpg";
 		break;
 	case ClothesType_Coat:
-		path = "coat1s.jpg";
+		path = "coat1.jpg";
 		break;
 	default:
 		break;
@@ -112,8 +110,8 @@ int LoadClothes(cv::Mat *image, cv::Mat *imageMask, ClothesType clothesType)
 	*image = cv::imread(path);
 	if (image->empty())
 	{
-		cout << "ERROR load cloathes image Failed !";
-		return 0;
+		//cout << "ERROR load cloathes image Failed !";
+		return EXIT_FAILURE;
 	}
 	cv::cvtColor(*image, *image, cv::COLOR_BGR2BGRA);
 	cv::Mat img_gray;
@@ -121,37 +119,53 @@ int LoadClothes(cv::Mat *image, cv::Mat *imageMask, ClothesType clothesType)
 	cv::threshold(img_gray, *imageMask, 230, 255, cv::THRESH_BINARY_INV);
 }
 
-void WareClothes(cv::Mat clothesImage, cv::Mat clothes_mask, ICoordinateMapper *coordinatemapper, Joint joint[], cv::Mat *canvas, ClothesType clothesType)
+void WareClothes(cv::Mat clothesImage, cv::Mat clothes_mask, ICoordinateMapper* coordinatemapper, Joint joint[], cv::Mat *canvas, ClothesType clothesType)
 {
-	ColorSpacePoint cspHead, cspNeck, cspSpineShoulder;
+	ColorSpacePoint cspHead, cspNeck, cspSpineShoulder, cspShoulderLeft, cspShoulderRight;
 	coordinatemapper->MapCameraPointToColorSpace(joint[JointType_Head].Position, &cspHead);
-	coordinatemapper->MapCameraPointToColorSpace(joint[JointType_SpineShoulder].Position, &cspSpineShoulder);
+	coordinatemapper->MapCameraPointToColorSpace(joint[JointType_Neck].Position, &cspNeck);
+	coordinatemapper->MapCameraPointToColorSpace(joint[JointType_ShoulderLeft].Position, &cspShoulderLeft);
+	coordinatemapper->MapCameraPointToColorSpace(joint[JointType_ShoulderRight].Position, &cspShoulderRight);
 	int head_x = (int)cspHead.X;
 	int head_y = (int)cspHead.Y;
-	int SpineShoulder_x = (int)cspSpineShoulder.X;
-	int SpineShoulder_y = (int)cspSpineShoulder.Y;
-
-	cv::Mat clothesROI;
-	int clothes_x, clothes_y;
-	switch (clothesType)
+	int neck_x = (int)cspNeck.X;
+	int neck_y = (int)cspNeck.Y;
+	int ShoulderWidth = abs((int)cspShoulderLeft.X - (int)cspShoulderRight.X);
+ 	if (ShoulderWidth > 100)
 	{
-	case ClothesType_Hat:
-		clothes_x = head_x - clothesImage.cols / 2;
-		clothes_y = head_y - clothesImage.rows;
-		break;
-	case ClothesType_Coat:
-		clothes_x = SpineShoulder_x - clothesImage.cols / 2;
-		clothes_y = SpineShoulder_y - 50;
-		break;
-	default:
-		break;
+		float clothesWidth, clothes_n;
+		clothesWidth = ShoulderWidth * 1.5;
+		clothes_n = clothesImage.cols / clothesWidth;
+		if (clothes_n < 1)
+		{
+			clothes_n = 1;
+		}
+
+		cv::Mat clothesROI, clothesImage_copy, clothes_mask_copy;
+		float clothes_x, clothes_y;
+		switch (clothesType)
+		{
+		case ClothesType_Hat:
+			clothes_x = head_x - clothesImage.cols / 2;
+			clothes_y = head_y - clothesImage.rows;
+			break;
+		case ClothesType_Coat:
+			cv::resize(clothesImage, clothesImage_copy, cv::Size(clothesImage.cols / clothes_n, clothesImage.rows / clothes_n));
+			cv::resize(clothes_mask, clothes_mask_copy, cv::Size(clothes_mask.cols / clothes_n, clothes_mask.rows / clothes_n));
+			clothes_x = neck_x - clothesImage_copy.cols / 2;
+			clothes_y = neck_y - 20;
+			break;
+		default:
+			break;
+		}
+
+		if (clothes_x > 0 && (clothes_x + clothesImage_copy.cols) < canvas->cols && clothes_y > 0 && (clothes_y + clothesImage_copy.rows) < canvas->rows)
+		{
+			clothesROI = (*canvas)(cv::Rect(clothes_x, clothes_y, clothesImage_copy.cols, clothesImage_copy.rows));
+			clothesImage_copy.copyTo(clothesROI, clothes_mask_copy);
+		}
 	}
 	
-	if (clothes_x > 0 && (clothes_x + clothesImage.cols) < canvas->cols && clothes_y > 0 && (clothes_y + clothesImage.rows) < canvas->rows)
-	{
-		clothesROI = (*canvas)(cv::Rect(clothes_x, clothes_y, clothesImage.cols, clothesImage.rows));
-		clothesImage.copyTo(clothesROI, clothes_mask);
-	}
 }
 
 int main()
@@ -277,7 +291,7 @@ int main()
 					DrawHandStatus(joint[JointType_HandRight], sRightHand, pCoorinateMapper, bodyFrame);
 
 					//Ware clothes
-					WareClothes(hat, hat_mask, pCoorinateMapper, joint, &bodyFrame, ClothesType_Hat);
+					//WareClothes(hat, hat_mask, pCoorinateMapper, joint, &bodyFrame, ClothesType_Hat);
 					WareClothes(coat, coat_mask, pCoorinateMapper, joint, &bodyFrame, ClothesType_Coat);
 				}
 			}
@@ -291,7 +305,12 @@ int main()
 
 		cv::Mat smallFrame;
 		cv::resize(srcColorFrame, smallFrame, cv::Size(srcColorFrame.cols / 2, srcColorFrame.rows / 2));
-		cv::imshow("bodyFrame", smallFrame);
+
+		//Show image fullsreen
+		//cv::namedWindow("changeClothes", CV_WINDOW_NORMAL);
+		//cv::setWindowProperty("changeClothes", CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
+		cv::imshow("changeClothes", smallFrame);
+
 
 		if (cv::waitKey(5) == 27)
 		{

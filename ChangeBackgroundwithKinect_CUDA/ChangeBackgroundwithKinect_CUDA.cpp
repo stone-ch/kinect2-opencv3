@@ -1,23 +1,23 @@
 #include "stdafx.h"
-#include "ChangeBackgroundwithKinect.h"
+#include "ChangeBackgroundwithKinect_CUDA.h"
 #include "LapalicanClass.h"
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	
 	changeBG CBG;
 	CBG.SetChartlet("E:/data/clothes/fangaos128x128.jpg");
 	CBG.Run();
-	
+
 	return 0;
 }
 
-changeBG::changeBG() : 
-	pMyKinect(NULL),
-	pCoordinateMapper(NULL),
-	pMultiSourceFrameReader(NULL),
-	pDepthCoordinates(NULL)
+changeBG::changeBG() :
+pMyKinect(NULL),
+pCoordinateMapper(NULL),
+pMultiSourceFrameReader(NULL),
+pDepthCoordinates(NULL)
 {
+	
 	frameWriter.open("frame.avi", CV_FOURCC('M', 'J', 'P', 'G'), 15.0, Size(1920, 1080));
 	bg = imread("E:/data/clothes/19201080.jpg");
 	backgroundImage = Mat::ones(Size(1920, 1080), CV_8UC3);
@@ -25,7 +25,6 @@ changeBG::changeBG() :
 	resultImage.create(cHeight, cWidth, CV_8UC3);
 	hr = S_FALSE;
 	cstart = 0, cend = 0;
-	t = 0;
 
 	// create heap storage for the coorinate mapping from color to depth
 	pDepthCoordinates = new DepthSpacePoint[cWidth * cHeight];
@@ -47,20 +46,19 @@ void changeBG::Run()
 {
 	while (true)
 	{
-		t = cv::getTickCount();
+		//total_cstart = clock();
 		Update();
-		t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
-		fps = 1.0 / t;
-		cout << "fps" << fps << endl;
 		//cout << resultImage.cols << resultImage.rows << endl;
 		//resize(resultImage, resultImage, Size(1920, 1080));
 		//pyrUp(resultImage, resultImage);
 		imshow("resultImage", resultImage);
 
 		// save video to frame.avi
-		//resultImage.convertTo(resultImage, CV_8UC3, 255);
-		//frameWriter << resultImage;
+		resultImage.convertTo(resultImage, CV_8UC3, 255);
+		frameWriter << resultImage;
 
+		//otal_cend = clock();
+		//cout << "total time:      " << total_cend - total_cstart << endl;
 		if (waitKey(10) == 27)
 		{
 			break;
@@ -103,7 +101,7 @@ void changeBG::initKinect()
 		hr = pMyKinect->get_IsAvailable(&bAvaliable);
 	}
 
-	
+
 	cstart = clock();
 
 	//Loop until Kinect is avaliable
@@ -136,7 +134,7 @@ void changeBG::initKinect()
 }
 
 void changeBG::Update()
-{	
+{
 	if (!pMultiSourceFrameReader)
 	{
 		return;
@@ -162,7 +160,7 @@ void changeBG::Update()
 		{
 			hr = pMultiSourceFrameReader->AcquireLatestFrame(&pMultiSourceFrame);
 		}
-		
+
 		cout << "MultiSourceFrame" << rand() % 100 << endl;
 	}
 
@@ -350,7 +348,7 @@ void changeBG::Update()
 					pCoordinateMapper->MapCameraPointToColorSpace(joint[JointType_Head].Position, &csp1);
 
 					int chartlet_x = (int)csp1.X - 200 - (chartlet.cols / 2);
-					int chartlet_y = (int)csp1.Y -(chartlet.rows / 2);
+					int chartlet_y = (int)csp1.Y - (chartlet.rows / 2);
 					if (chartlet_x > 300 && chartlet_x < resultImage.cols - 200 && chartlet_y > 200 && chartlet_y < resultImage.rows - 200)
 					{
 						Mat_<Vec3f> chartletROI = resultImage(Range(chartlet_y, chartlet_y + chartlet.cols), Range(chartlet_x, chartlet_x + chartlet.rows));
@@ -377,12 +375,12 @@ void changeBG::Update()
 
 
 void changeBG::ProcessFrame
-	(
-	INT64 time,
-	const UINT16* pDepthBuffer, int depthHeight, int depthWidth,
-	const RGBQUAD* pColorBuffer, int colorHeight, int colorWidth,
-	const BYTE* pBodyIndexBuffer, int bodyIndexHeight, int bodyIndexWidth
-	)
+(
+INT64 time,
+const UINT16* pDepthBuffer, int depthHeight, int depthWidth,
+const RGBQUAD* pColorBuffer, int colorHeight, int colorWidth,
+const BYTE* pBodyIndexBuffer, int bodyIndexHeight, int bodyIndexWidth
+)
 {
 	if (pCoordinateMapper && pDepthCoordinates &&
 		pDepthBuffer && (depthWidth == dWidth) && (depthHeight == dHeight) &&
@@ -421,12 +419,12 @@ void changeBG::ProcessFrame
 					{
 						BYTE player = pBodyIndexBuffer[depthX + (depthY * dWidth)];
 
-						
+
 						if (player != 0xff)
 						{
 							//resultImage.at<Vec3b>(i, j) = colorImage3.at<Vec3b>(i, j);
 							z.at<Vec3b>(i, j) = Vec3b(255, 255, 255);
-						}						
+						}
 					}
 				}
 			}
@@ -438,7 +436,7 @@ void changeBG::ProcessFrame
 			resize(z, z, Size(z.cols / 2, z.rows / 2));*/
 
 			cstart = clock();
-			LapalicanClass lap;	
+			LapalicanClass lap;
 			lap.setBGImage(bgc);
 			lap.setFGImage(colorImage3);
 			lap.setMaskImage(z);
