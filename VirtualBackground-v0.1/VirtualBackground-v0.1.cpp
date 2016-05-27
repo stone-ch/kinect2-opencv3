@@ -18,6 +18,7 @@ pCoordinateMapper(NULL),
 pMultiSourceFrameReader(NULL),
 pDepthCoordinates(NULL)
 {
+	//frameWriter.open("frame.avi", CV_FOURCC('M', 'J', 'P', 'G'), 15.0, Size(1920 / 2, 1080 / 2));
 	bg = imread("E:/data/clothes/19201080.jpg");
 	backgroundImage = Mat::ones(Size(1920, 1080), CV_8UC3);
 	colorImage.create(cHeight, cWidth, CV_8UC4);
@@ -45,8 +46,15 @@ void changeBG::Run()
 	while (true)
 	{
 		Update();
-		resize(resultImage, resultImage, Size(1920, 1080));
+		
+		//resize(resultImage, resultImage, Size(1920, 1080));
+		
 		imshow("resultImage", resultImage);
+
+		// save video to frame.avi
+		//resultImage.convertTo(resultImage, CV_8UC3, 255);
+		//frameWriter << resultImage;
+		
 
 		if (waitKey(10) == 27)
 		{
@@ -398,6 +406,8 @@ const BYTE* pBodyIndexBuffer, int bodyIndexHeight, int bodyIndexWidth
 				}
 			}
 
+			Mat kernel = getStructuringElement(MORPH_RECT, Size(3, 3));
+			morphologyEx(z, z, MORPH_DILATE, kernel);
 			resize(bgc, bgc, Size(bgc.cols / 2, bgc.rows / 2));
 			resize(colorImage3, colorImage3, Size(colorImage3.cols / 2, colorImage3.rows / 2));
 			resize(z, z, Size(z.cols / 2, z.rows / 2));

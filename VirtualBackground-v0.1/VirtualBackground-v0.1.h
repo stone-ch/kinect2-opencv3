@@ -26,6 +26,7 @@ private:
 	Mat							z;
 	RGBQUAD*					pColorBuffer;
 	clock_t						cstart, cend;
+	//VideoWriter					frameWriter;
 	Mat_<Vec3f>					chartlet;
 
 	void initKinect();
