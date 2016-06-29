@@ -1,0 +1,2 @@
+AutoMatch  通过模板匹配法自动计算Xtion和普通摄像头的偏移量。
+XtionAndLogitech 使用AutoMatch计算出的偏移量做配准
